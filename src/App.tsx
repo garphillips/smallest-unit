@@ -108,6 +108,9 @@ export default function App() {
       const blob = recorder.stop(engine);
       if (blob) download(blob, `track-${snapshotRef.current.bpm}bpm.wav`);
       setRecording(false);
+      transportRef.current!.stopAndReset();
+      setPlaying(false);
+      setCurrentStep(-1);
     } else {
       await recorder.start(engine);
       setRecSec(0);

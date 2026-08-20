@@ -49,6 +49,13 @@ export class Transport {
     this.uiTimeouts = [];
   }
 
+  /** Stop and rewind — the next start() begins from step 0 rather than resuming. */
+  stopAndReset() {
+    this.stop();
+    this.pausedStep = null;
+    this.nextStep = 0;
+  }
+
   private schedule() {
     const ac = this.engine.ctx();
     const E = this.engine.env();

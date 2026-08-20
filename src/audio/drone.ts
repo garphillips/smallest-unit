@@ -3,11 +3,31 @@ import type { Engine } from './engine';
 interface DroneNodes {
   g: GainNode;
   lp: BiquadFilterNode;
+  noiseFilter: BiquadFilterNode;
+  noise: AudioBufferSourceNode;
   oscs: { o: OscillatorNode; semi: number }[];
 }
 
+const DRIVE = 3.2;
+const DISTORTION_AMOUNT = 55;
+const GRAIN_LEVEL = 0.16;
+
+/** Classic soft-clip waveshaper curve; higher `amount` bites harder. */
+function makeDistortionCurve(amount: number): Float32Array {
+  const samples = 1024;
+  const curve = new Float32Array(samples);
+  const deg = Math.PI / 180;
+  for (let i = 0; i < samples; i++) {
+    const x = (i * 2) / samples - 1;
+    curve[i] = ((3 + amount) * x * 20 * deg) / (Math.PI + amount * Math.abs(x));
+  }
+  return curve;
+}
+
 /**
- * XY pad drone: three detuned triangle oscillators through a lowpass.
+ * XY pad drone: three detuned triangle oscillators through a lowpass, driven
+ * into a waveshaper for grit, with a looped noise source (filtered alongside
+ * the same cutoff) mixed in pre-distortion for grain.
  * Y picks a pitch quantized to the same A-minor degrees as the lanes
  * (root, b3, 5th across two octaves); X sweeps timbre 200..4000 Hz.
  */
@@ -24,14 +44,41 @@ export class PadDrone {
     const g = ac.createGain();
     g.gain.setValueAtTime(0.0001, t);
     g.gain.linearRampToValueAtTime(0.17, t + 0.15);
+
     const lp = ac.createBiquadFilter();
     lp.type = 'lowpass';
     lp.Q.value = 2;
-    lp.connect(g);
+
+    const drive = ac.createGain();
+    drive.gain.value = DRIVE;
+
+    const shaper = ac.createWaveShaper();
+    shaper.curve = makeDistortionCurve(DISTORTION_AMOUNT);
+    shaper.oversample = '4x';
+
+    lp.connect(drive);
+    drive.connect(shaper);
+    shaper.connect(g);
     g.connect(this.engine.master);
+
+    const noiseFilter = ac.createBiquadFilter();
+    noiseFilter.type = 'bandpass';
+    noiseFilter.Q.value = 0.7;
+    const noiseGain = ac.createGain();
+    noiseGain.gain.value = GRAIN_LEVEL;
+    const noise = ac.createBufferSource();
+    noise.buffer = this.engine.env().noiseBuf;
+    noise.loop = true;
+    noise.connect(noiseFilter);
+    noiseFilter.connect(noiseGain);
+    noiseGain.connect(drive);
+    noise.start(t);
+
     this.nodes = {
       g,
       lp,
+      noiseFilter,
+      noise,
       oscs: (
         [
           [0, -6],
@@ -62,21 +109,28 @@ export class PadDrone {
       if (snap) o.frequency.setValueAtTime(f, t);
       else o.frequency.setTargetAtTime(f, t, 0.04);
     });
-    if (snap) this.nodes.lp.frequency.setValueAtTime(cut, t);
-    else this.nodes.lp.frequency.setTargetAtTime(cut, t, 0.04);
+    if (snap) {
+      this.nodes.lp.frequency.setValueAtTime(cut, t);
+      this.nodes.noiseFilter.frequency.setValueAtTime(cut, t);
+    } else {
+      this.nodes.lp.frequency.setTargetAtTime(cut, t, 0.04);
+      this.nodes.noiseFilter.frequency.setTargetAtTime(cut, t, 0.04);
+    }
   }
 
   stop(hard: boolean) {
     if (!this.nodes) return;
-    const { g, oscs } = this.nodes;
+    const { g, oscs, noise } = this.nodes;
     const t = this.engine.ctx().currentTime;
     if (hard) {
       oscs.forEach(({ o }) => o.stop(t));
+      noise.stop(t);
     } else {
       g.gain.cancelScheduledValues(t);
       g.gain.setValueAtTime(g.gain.value, t);
       g.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
       oscs.forEach(({ o }) => o.stop(t + 0.5));
+      noise.stop(t + 0.5);
     }
     this.nodes = null;
   }

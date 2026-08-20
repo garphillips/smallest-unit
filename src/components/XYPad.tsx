@@ -150,15 +150,6 @@ export function XYPad({ engine }: Props) {
             transition: 'background 120ms cubic-bezier(0.4,0,0.2,1)',
           }}
         />
-        <div style={{ position: 'absolute', left: 12, top: 10, font: wowmeta(9), letterSpacing: '0.08em', textTransform: 'uppercase', color: pFn(0.28), pointerEvents: 'none' }}>
-          pitch ↑
-        </div>
-        <div style={{ position: 'absolute', left: 12, bottom: 10, font: wowmeta(9), letterSpacing: '0.08em', textTransform: 'uppercase', color: pFn(0.28), pointerEvents: 'none' }}>
-          timbre →
-        </div>
-        <div style={{ position: 'absolute', right: 12, bottom: 10, font: wowmeta(9), letterSpacing: '0.08em', textTransform: 'uppercase', color: pFn(0.42), pointerEvents: 'none' }}>
-          {held ? 'live' : 'hold and move.'}
-        </div>
       </div>
     </div>
   );

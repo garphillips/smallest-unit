@@ -58,11 +58,7 @@ export function PitchLanes({ lanes, currentStep, onCycle, onSetLane }: Props) {
               })}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <div className="lane-col">
-                <div style={{ font: wowmeta(11, 1.4), letterSpacing: '0.08em', textTransform: 'uppercase', color: alpha(hex, 0.28) }}>
-                  {def.chipTitle}
-                </div>
-              </div>
+              <div className="lane-col" />
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {def.shapes.map((shape) => (
                   <button key={shape} className="chip" onClick={() => onSetLane(def.id, melFill(def.id, shape))}>
