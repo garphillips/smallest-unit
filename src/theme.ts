@@ -1,9 +1,15 @@
-export const BG = '#1C1217';
+export const BG = '#171717';
 export const TEXT = '#F2E2FF';
 export const RED = '#E5484D';
 
+/** Warm off-white for the logo, wordmark, and primary transport/tempo controls. */
+export const OFFWHITE = '#F2EFE9';
+
 /** Alpha tint of the base text color #F2E2FF. */
 export const tint = (a: number) => `rgba(242,226,255,${a})`;
+
+/** Alpha tint of the off-white #F2EFE9. */
+export const offTint = (a: number) => `rgba(242,239,233,${a})`;
 
 export function hexToRgb(hex: string): [number, number, number] {
   return [1, 3, 5].map((k) => parseInt(hex.slice(k, k + 2), 16)) as [number, number, number];

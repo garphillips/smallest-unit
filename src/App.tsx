@@ -9,6 +9,8 @@ import { renderStems } from './audio/stems';
 import { playMel, playVoice } from './audio/voices';
 import { loadState, saveState } from './storage';
 import { download } from './download';
+import { Footer } from './components/Footer';
+import { Header } from './components/Header';
 import { TransportControls } from './components/TransportControls';
 import { BpmControl } from './components/BpmControl';
 import { StepGrid } from './components/StepGrid';
@@ -137,9 +139,10 @@ export default function App() {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 48,
+        padding: '128px 48px 72px',
       }}
     >
+      <Header />
       <div style={{ width: '100%', maxWidth: 1180, display: 'flex', flexDirection: 'column', gap: 48 }}>
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 48, flexWrap: 'wrap' }}>
           <TransportControls
@@ -156,6 +159,7 @@ export default function App() {
         <StepGrid pattern={pattern} currentStep={currentStep} onToggle={toggleCell} />
         <PitchLanes lanes={lanes} currentStep={currentStep} onCycle={cycleMel} onSetLane={setLane} />
         <XYPad engine={engine} />
+        <Footer />
       </div>
     </div>
   );

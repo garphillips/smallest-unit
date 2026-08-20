@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { MinusSquare, PlusSquare } from '@phosphor-icons/react';
 import { BPM_MAX, BPM_MIN } from '../config';
-import { TEXT, tint } from '../theme';
+import { OFFWHITE, offTint } from '../theme';
 
 interface Props {
   bpm: number;
@@ -43,9 +43,9 @@ export function BpmControl({ bpm, onChange }: Props) {
               textAlign: 'center',
               fontVariantNumeric: 'tabular-nums',
               background: 'transparent',
-              color: TEXT,
+              color: OFFWHITE,
               border: 'none',
-              borderBottom: `1px solid ${tint(0.32)}`,
+              borderBottom: `1px solid ${offTint(0.32)}`,
               outline: 'none',
               padding: 0,
               boxSizing: 'border-box',
@@ -69,7 +69,7 @@ export function BpmControl({ bpm, onChange }: Props) {
               boxSizing: 'border-box',
             }}
           >
-            <span style={{ font: "900 64px/0.9 'North East', Georgia, serif", fontVariantNumeric: 'tabular-nums' }}>
+            <span style={{ font: "900 64px/0.9 'North East', Georgia, serif", fontVariantNumeric: 'tabular-nums', color: OFFWHITE }}>
               {String(bpm).padStart(3, '0')}
             </span>
             <span
@@ -77,7 +77,7 @@ export function BpmControl({ bpm, onChange }: Props) {
                 font: "400 14px/1 'Wowmeta', monospace",
                 letterSpacing: '0.06em',
                 textTransform: 'uppercase',
-                color: tint(0.42),
+                color: offTint(0.42),
               }}
             >
               bpm
