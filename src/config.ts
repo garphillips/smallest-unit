@@ -17,8 +17,8 @@ export const TRACK_DEFS: TrackDef[] = [
   { id: 'kick', name: 'kick' },
   { id: 'snare', name: 'snare' },
   { id: 'rim', name: 'rim' },
-  { id: 'hat', name: 'hat' },
-  { id: 'ohat', name: 'open hat' },
+  { id: 'hat', name: 'chik' },
+  { id: 'ohat', name: 'hats' },
 ];
 
 export const LANE_DEFS: LaneDef[] = [

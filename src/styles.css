@@ -48,13 +48,13 @@ button {
 }
 
 .lane-col {
-  width: 132px;
+  width: 84px;
   flex: none;
   min-width: 0;
 }
 @media (max-width: 720px) {
   .lane-col {
-    width: 52px;
+    width: 44px;
   }
   .lane-col div {
     overflow: hidden;

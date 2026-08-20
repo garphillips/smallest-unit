@@ -8,7 +8,7 @@ export function Footer() {
       target="_blank"
       rel="noopener noreferrer"
       style={{
-        alignSelf: 'flex-start',
+        alignSelf: 'flex-end',
         color: OFFWHITE,
         font: wowmeta(11),
         letterSpacing: '0.08em',
