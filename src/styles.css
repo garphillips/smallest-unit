@@ -121,26 +121,24 @@ button {
   background: rgba(var(--acc), 0.12);
 }
 
-.chip {
-  height: 32px;
-  padding: 0 14px;
-  border-radius: 999px;
+.lane-icon-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
   border: 1px solid rgba(var(--acc), 0.18);
   background: transparent;
   color: rgba(var(--acc), 0.64);
-  font: 400 11px/1 'Wowmeta', monospace;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
   transition:
     background 120ms cubic-bezier(0.4, 0, 0.2, 1),
     border-color 120ms cubic-bezier(0.4, 0, 0.2, 1);
 }
-.chip:hover {
+.lane-icon-btn:hover {
   border-color: rgba(var(--acc), 0.36);
-}
-.chip.dim {
-  color: rgba(var(--acc), 0.42);
+  background: rgba(var(--acc), 0.08);
 }
 
 /* transport */

@@ -1,8 +1,9 @@
-import type { CSSProperties } from 'react';
+import { useState, type CSSProperties } from 'react';
+import { Eraser, Shuffle } from '@phosphor-icons/react';
 import { ACCENTS, LANE_DEFS, STEPS } from '../config';
 import { alpha, hexToRgb, wowmeta } from '../theme';
 import { emptyLane, melFill } from '../patterns';
-import type { LaneId, Lanes } from '../types';
+import type { LaneDef, LaneId, Lanes } from '../types';
 
 interface Props {
   lanes: Lanes;
@@ -15,6 +16,14 @@ const DEG_NAMES = ['root', 'b3', '5th', 'oct'];
 const groupStart = (i: number) => i % 4 === 0 && i > 0;
 
 export function PitchLanes({ lanes, currentStep, onCycle, onSetLane }: Props) {
+  const [shuffleIdx, setShuffleIdx] = useState<Record<LaneId, number>>({ bass: 0, synth: 0 });
+
+  const shuffle = (def: LaneDef) => {
+    const idx = shuffleIdx[def.id] % def.shapes.length;
+    onSetLane(def.id, melFill(def.id, def.shapes[idx]));
+    setShuffleIdx((s) => ({ ...s, [def.id]: idx + 1 }));
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
       {LANE_DEFS.map((def) => {
@@ -22,7 +31,7 @@ export function PitchLanes({ lanes, currentStep, onCycle, onSetLane }: Props) {
         const acc = hexToRgb(hex).join(',');
         const rowStyle = { '--acc': acc } as CSSProperties;
         return (
-          <div key={def.id} style={{ display: 'flex', flexDirection: 'column', gap: 12, ...rowStyle }}>
+          <div key={def.id} style={{ display: 'flex', flexDirection: 'column', gap: 0, ...rowStyle }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <div className="lane-col">
                 <div style={{ font: wowmeta(12, 1.4), letterSpacing: '0.08em', textTransform: 'uppercase', color: alpha(hex, 0.64) }}>
@@ -58,15 +67,12 @@ export function PitchLanes({ lanes, currentStep, onCycle, onSetLane }: Props) {
               })}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <div className="lane-col" />
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {def.shapes.map((shape) => (
-                  <button key={shape} className="chip" onClick={() => onSetLane(def.id, melFill(def.id, shape))}>
-                    {shape}
-                  </button>
-                ))}
-                <button className="chip dim" onClick={() => onSetLane(def.id, emptyLane())}>
-                  clear
+              <div className="lane-col" style={{ display: 'flex', gap: 8 }}>
+                <button className="lane-icon-btn" onClick={() => shuffle(def)} title="shuffle" aria-label={`shuffle ${def.id}`}>
+                  <Shuffle size={15} weight="bold" />
+                </button>
+                <button className="lane-icon-btn" onClick={() => onSetLane(def.id, emptyLane())} title="clear" aria-label={`clear ${def.id}`}>
+                  <Eraser size={15} weight="bold" />
                 </button>
               </div>
             </div>

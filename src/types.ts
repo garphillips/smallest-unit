@@ -22,6 +22,5 @@ export interface TrackDef {
 
 export interface LaneDef {
   id: LaneId;
-  chipTitle: string;
   shapes: string[];
 }

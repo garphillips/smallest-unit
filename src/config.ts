@@ -22,6 +22,6 @@ export const TRACK_DEFS: TrackDef[] = [
 ];
 
 export const LANE_DEFS: LaneDef[] = [
-  { id: 'bass', chipTitle: 'arp', shapes: ['rise', 'fall', 'bounce', 'drift'] },
-  { id: 'synth', chipTitle: 'riff', shapes: ['stabs', 'answer', 'rise', 'drift'] },
+  { id: 'bass', shapes: ['rise', 'fall', 'bounce', 'drift'] },
+  { id: 'synth', shapes: ['stabs', 'answer', 'rise', 'drift'] },
 ];
