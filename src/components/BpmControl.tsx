@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MinusSquare, PlusSquare } from '@phosphor-icons/react';
+import { CaretDown, CaretUp } from '@phosphor-icons/react';
 import { BPM_MAX, BPM_MIN } from '../config';
 import { OFFWHITE, offTint } from '../theme';
 
@@ -23,6 +23,14 @@ export function BpmControl({ bpm, onChange }: Props) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginLeft: 'auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+          <button className="stepper-btn" onClick={() => onChange(clamp(bpm + 2))} aria-label="bpm up">
+            <CaretUp size={27} weight="fill" />
+          </button>
+          <button className="stepper-btn" onClick={() => onChange(clamp(bpm - 2))} aria-label="bpm down">
+            <CaretDown size={27} weight="fill" />
+          </button>
+        </div>
         {editing ? (
           <input
             value={draft}
@@ -84,14 +92,6 @@ export function BpmControl({ bpm, onChange }: Props) {
             </span>
           </div>
         )}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <button className="stepper-btn" onClick={() => onChange(clamp(bpm + 2))} aria-label="bpm up">
-            <PlusSquare size={18} weight="fill" />
-          </button>
-          <button className="stepper-btn" onClick={() => onChange(clamp(bpm - 2))} aria-label="bpm down">
-            <MinusSquare size={18} weight="fill" />
-          </button>
-        </div>
       </div>
     </div>
   );
