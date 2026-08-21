@@ -11,6 +11,7 @@ interface DroneNodes {
 const DRIVE = 3.2;
 const DISTORTION_AMOUNT = 55;
 const GRAIN_LEVEL = 0.16;
+const PAN = 1; // pad sits hard-right
 
 /** Classic soft-clip waveshaper curve; higher `amount` bites harder. */
 function makeDistortionCurve(amount: number): Float32Array {
@@ -33,8 +34,19 @@ function makeDistortionCurve(amount: number): Float32Array {
  */
 export class PadDrone {
   private nodes: DroneNodes | null = null;
+  private panner: StereoPannerNode | null = null;
 
   constructor(private engine: Engine) {}
+
+  private getPanner(): StereoPannerNode {
+    if (!this.panner) {
+      const panner = this.engine.ctx().createStereoPanner();
+      panner.pan.value = PAN;
+      panner.connect(this.engine.master);
+      this.panner = panner;
+    }
+    return this.panner;
+  }
 
   start(x: number, y: number) {
     const ac = this.engine.ctx();
@@ -59,7 +71,7 @@ export class PadDrone {
     lp.connect(drive);
     drive.connect(shaper);
     shaper.connect(g);
-    g.connect(this.engine.master);
+    g.connect(this.getPanner());
 
     const noiseFilter = ac.createBiquadFilter();
     noiseFilter.type = 'bandpass';

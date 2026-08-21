@@ -8,23 +8,31 @@ interface Props {
   engine: Engine;
 }
 
+// Bottom row types the naturals (c d e f g a b); the row above sits each
+// sharp/flat above the gap between the two naturals it falls between —
+// e.g. s (above the z/x gap) plays c#, matching how the keys sit on a
+// physical keyboard.
 const WHITE_KEYS = [
-  { name: 'c', semi: 0 },
-  { name: 'd', semi: 2 },
-  { name: 'e', semi: 4 },
-  { name: 'f', semi: 5 },
-  { name: 'g', semi: 7 },
-  { name: 'a', semi: 9 },
-  { name: 'b', semi: 11 },
+  { name: 'c', semi: 0, key: 'z' },
+  { name: 'd', semi: 2, key: 'x' },
+  { name: 'e', semi: 4, key: 'c' },
+  { name: 'f', semi: 5, key: 'v' },
+  { name: 'g', semi: 7, key: 'b' },
+  { name: 'a', semi: 9, key: 'n' },
+  { name: 'b', semi: 11, key: 'm' },
 ];
 
 const BLACK_KEYS = [
-  { name: 'c#', semi: 1, whiteIndex: 0 },
-  { name: 'd#', semi: 3, whiteIndex: 1 },
-  { name: 'f#', semi: 6, whiteIndex: 3 },
-  { name: 'g#', semi: 8, whiteIndex: 4 },
-  { name: 'a#', semi: 10, whiteIndex: 5 },
+  { name: 'c#', semi: 1, whiteIndex: 0, key: 's' },
+  { name: 'd#', semi: 3, whiteIndex: 1, key: 'd' },
+  { name: 'f#', semi: 6, whiteIndex: 3, key: 'g' },
+  { name: 'g#', semi: 8, whiteIndex: 4, key: 'h' },
+  { name: 'a#', semi: 10, whiteIndex: 5, key: 'j' },
 ];
+
+const KEY_MAP: Record<string, number> = Object.fromEntries(
+  [...WHITE_KEYS, ...BLACK_KEYS].map((k) => [k.key, k.semi]),
+);
 
 export function PianoKeys({ engine }: Props) {
   const synthRef = useRef<KeySynth | null>(null);
@@ -34,6 +42,40 @@ export function PianoKeys({ engine }: Props) {
   const [heldKey, setHeldKey] = useState(-1);
 
   useEffect(() => () => synth.releaseAll(), [synth]);
+
+  useEffect(() => {
+    const isTyping = () => /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || '');
+    const down = new Set<string>();
+    const onKeyDown = (e: KeyboardEvent) => {
+      const key = e.key.toLowerCase();
+      const semi = KEY_MAP[key];
+      if (semi === undefined || e.repeat || down.has(key) || isTyping()) return;
+      down.add(key);
+      synth.press(semi);
+      setHeldKey(semi);
+    };
+    const onKeyUp = (e: KeyboardEvent) => {
+      const key = e.key.toLowerCase();
+      const semi = KEY_MAP[key];
+      if (semi === undefined) return;
+      down.delete(key);
+      synth.release(semi);
+      setHeldKey((h) => (h === semi ? -1 : h));
+    };
+    const onBlur = () => {
+      down.forEach((key) => synth.release(KEY_MAP[key]));
+      down.clear();
+      setHeldKey(-1);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    window.addEventListener('blur', onBlur);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('blur', onBlur);
+    };
+  }, [synth]);
 
   const onDown = (semi: number) => (e: ReactPointerEvent) => {
     e.preventDefault();
@@ -59,7 +101,7 @@ export function PianoKeys({ engine }: Props) {
             aria-label={`key ${k.name}`}
           >
             <span style={{ font: wowmeta(11), letterSpacing: '0.08em', textTransform: 'uppercase', color: tint(0.42) }}>
-              {k.name}
+              {k.name} ({k.key})
             </span>
           </button>
         ))}

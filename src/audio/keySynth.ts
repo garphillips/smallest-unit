@@ -9,11 +9,12 @@ interface KeyNodes {
 const DETUNES = [-14, 0, 14]; // supersaw unison spread, cents
 const ATTACK = 0.02;
 const DECAY = 0.35;
-const PEAK = 0.28;
-const SUSTAIN = 0.16;
+const PEAK = 0.14;
+const SUSTAIN = 0.08;
 const RELEASE = 0.4;
 const BRIGHT_HZ = 5200;
 const WARM_HZ = 1300;
+const PAN = -1; // piano sits hard-left
 
 /**
  * Synthwave-style sustained voice: a detuned sawtooth "supersaw" plus a sub
@@ -23,8 +24,19 @@ const WARM_HZ = 1300;
  */
 export class KeySynth {
   private voices = new Map<number, KeyNodes>();
+  private panner: StereoPannerNode | null = null;
 
   constructor(private engine: Engine) {}
+
+  private getPanner(): StereoPannerNode {
+    if (!this.panner) {
+      const panner = this.engine.ctx().createStereoPanner();
+      panner.pan.value = PAN;
+      panner.connect(this.engine.master);
+      this.panner = panner;
+    }
+    return this.panner;
+  }
 
   press(semi: number) {
     this.release(semi, true);
@@ -44,7 +56,7 @@ export class KeySynth {
     g.gain.linearRampToValueAtTime(PEAK, t + ATTACK);
     g.gain.exponentialRampToValueAtTime(SUSTAIN, t + ATTACK + DECAY);
     lp.connect(g);
-    g.connect(this.engine.master);
+    g.connect(this.getPanner());
 
     const oscs = DETUNES.map((det) => {
       const o = ac.createOscillator();
