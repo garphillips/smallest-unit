@@ -16,6 +16,7 @@ import { BpmControl } from './components/BpmControl';
 import { StepGrid } from './components/StepGrid';
 import { PitchLanes } from './components/PitchLanes';
 import { XYPad } from './components/XYPad';
+import { PianoKeys } from './components/PianoKeys';
 
 export default function App() {
   const engineRef = useRef<Engine | null>(null);
@@ -161,7 +162,10 @@ export default function App() {
         </div>
         <StepGrid pattern={pattern} currentStep={currentStep} onToggle={toggleCell} />
         <PitchLanes lanes={lanes} currentStep={currentStep} onCycle={cycleMel} onSetLane={setLane} />
-        <XYPad engine={engine} />
+        <div className="performance-row">
+          <XYPad engine={engine} />
+          <PianoKeys engine={engine} />
+        </div>
         <Footer />
       </div>
     </div>

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { ACCENTS } from '../config';
-import { alpha, wowmeta } from '../theme';
+import { alpha } from '../theme';
 import { PadDrone } from '../audio/drone';
 import type { Engine } from '../audio/engine';
 
@@ -105,76 +105,69 @@ export function XYPad({ engine }: Props) {
   };
 
   return (
-    <div style={{ display: 'flex', alignItems: 'stretch', gap: 6 }}>
-      <div className="lane-col">
-        <div style={{ font: wowmeta(12, 1.4), letterSpacing: '0.08em', textTransform: 'uppercase', color: pFn(0.64) }}>pad</div>
+    <div
+      onPointerDown={onDown}
+      onPointerMove={onMove}
+      onPointerUp={onUp}
+      onPointerCancel={onUp}
+      style={{
+        height: 220,
+        position: 'relative',
+        overflow: 'hidden',
+        borderRadius: 8,
+        border: `1px solid ${pFn(held ? 0.36 : 0.18)}`,
+        background: held ? pFn(0.04) : 'transparent',
+        touchAction: 'none',
+        cursor: 'crosshair',
+        transition: 'background 120ms cubic-bezier(0.4,0,0.2,1), border-color 120ms cubic-bezier(0.4,0,0.2,1)',
+      }}
+    >
+      <svg width="0" height="0" style={{ position: 'absolute' }} aria-hidden="true">
+        <defs>
+          <filter id="xy-pad-goo">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="8" result="blur" />
+            <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 20 -9" />
+          </filter>
+        </defs>
+      </svg>
+      <div style={{ position: 'absolute', left: '50%', top: 0, bottom: 0, width: 1, background: pFn(0.08), pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: 1, background: pFn(0.08), pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', inset: 0, filter: 'url(#xy-pad-goo)', pointerEvents: 'none' }}>
+        {trail.map((p, idx) => {
+          const age = (Date.now() - p.t) / TRAIL_LIFE_MS;
+          const k = Math.max(0, 1 - age);
+          const sz = (10 + 32 * k * k).toFixed(1);
+          return (
+            <div
+              key={idx}
+              style={{
+                position: 'absolute',
+                width: `${sz}px`,
+                height: `${sz}px`,
+                borderRadius: 999,
+                left: `${(p.x * 100).toFixed(2)}%`,
+                top: `${(p.y * 100).toFixed(2)}%`,
+                transform: 'translate(-50%,-50%)',
+                background: pFn(Math.min(1, 0.9 * k)),
+              }}
+            />
+          );
+        })}
       </div>
       <div
-        onPointerDown={onDown}
-        onPointerMove={onMove}
-        onPointerUp={onUp}
-        onPointerCancel={onUp}
         style={{
-          flex: 1,
-          minWidth: 0,
-          height: 220,
-          position: 'relative',
-          overflow: 'hidden',
-          borderRadius: 8,
-          border: `1px solid ${pFn(held ? 0.36 : 0.18)}`,
-          background: held ? pFn(0.04) : 'transparent',
-          touchAction: 'none',
-          cursor: 'crosshair',
-          transition: 'background 120ms cubic-bezier(0.4,0,0.2,1), border-color 120ms cubic-bezier(0.4,0,0.2,1)',
+          position: 'absolute',
+          width: 42,
+          height: 42,
+          borderRadius: 999,
+          left: `${(xy.x * 100).toFixed(2)}%`,
+          top: `${(xy.y * 100).toFixed(2)}%`,
+          transform: 'translate(-50%,-50%)',
+          background: held ? HEX : pFn(0.42),
+          pointerEvents: 'none',
+          transition: 'background 120ms cubic-bezier(0.4,0,0.2,1)',
         }}
-      >
-        <svg width="0" height="0" style={{ position: 'absolute' }} aria-hidden="true">
-          <defs>
-            <filter id="xy-pad-goo">
-              <feGaussianBlur in="SourceGraphic" stdDeviation="8" result="blur" />
-              <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 20 -9" />
-            </filter>
-          </defs>
-        </svg>
-        <div style={{ position: 'absolute', left: '50%', top: 0, bottom: 0, width: 1, background: pFn(0.08), pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: 1, background: pFn(0.08), pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', inset: 0, filter: 'url(#xy-pad-goo)', pointerEvents: 'none' }}>
-          {trail.map((p, idx) => {
-            const age = (Date.now() - p.t) / TRAIL_LIFE_MS;
-            const k = Math.max(0, 1 - age);
-            const sz = (10 + 32 * k * k).toFixed(1);
-            return (
-              <div
-                key={idx}
-                style={{
-                  position: 'absolute',
-                  width: `${sz}px`,
-                  height: `${sz}px`,
-                  borderRadius: 999,
-                  left: `${(p.x * 100).toFixed(2)}%`,
-                  top: `${(p.y * 100).toFixed(2)}%`,
-                  transform: 'translate(-50%,-50%)',
-                  background: pFn(Math.min(1, 0.9 * k)),
-                }}
-              />
-            );
-          })}
-        </div>
-        <div
-          style={{
-            position: 'absolute',
-            width: 42,
-            height: 42,
-            borderRadius: 999,
-            left: `${(xy.x * 100).toFixed(2)}%`,
-            top: `${(xy.y * 100).toFixed(2)}%`,
-            transform: 'translate(-50%,-50%)',
-            background: held ? HEX : pFn(0.42),
-            pointerEvents: 'none',
-            transition: 'background 120ms cubic-bezier(0.4,0,0.2,1)',
-          }}
-        />
-      </div>
+      />
     </div>
   );
 }

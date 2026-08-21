@@ -127,3 +127,24 @@ export function playMel(E: AudioEnv, id: LaneId, deg: number, t: number, wave: B
   if (id === 'bass') playBass(E, deg, t, wave);
   else playSynth(E, deg, t);
 }
+
+/** Piano key voice: semi is a chromatic semitone offset from C4 (261.63 Hz). */
+export function playKey(E: AudioEnv, semi: number, t: number) {
+  const ac = E.ac;
+  const f0 = 261.63 * Math.pow(2, semi / 12);
+  const lp = ac.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.Q.value = 2;
+  lp.frequency.setValueAtTime(3800, t);
+  lp.frequency.exponentialRampToValueAtTime(700, t + 0.5);
+  lp.connect(envGain(E, t, 0.26, 0.9));
+  [0, 7].forEach((det) => {
+    const o = ac.createOscillator();
+    o.type = 'triangle';
+    o.frequency.value = f0;
+    o.detune.value = det;
+    o.connect(lp);
+    o.start(t);
+    o.stop(t + 0.95);
+  });
+}
