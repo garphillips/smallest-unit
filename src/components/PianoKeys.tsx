@@ -39,7 +39,21 @@ export function PianoKeys({ engine }: Props) {
   if (!synthRef.current) synthRef.current = new KeySynth(engine);
   const synth = synthRef.current;
 
-  const [heldKey, setHeldKey] = useState(-1);
+  const [heldKeys, setHeldKeys] = useState<Set<number>>(() => new Set());
+
+  const markHeld = (semi: number) =>
+    setHeldKeys((prev) => {
+      const next = new Set(prev);
+      next.add(semi);
+      return next;
+    });
+  const markReleased = (semi: number) =>
+    setHeldKeys((prev) => {
+      if (!prev.has(semi)) return prev;
+      const next = new Set(prev);
+      next.delete(semi);
+      return next;
+    });
 
   useEffect(() => () => synth.releaseAll(), [synth]);
 
@@ -52,7 +66,7 @@ export function PianoKeys({ engine }: Props) {
       if (semi === undefined || e.repeat || down.has(key) || isTyping()) return;
       down.add(key);
       synth.press(semi);
-      setHeldKey(semi);
+      markHeld(semi);
     };
     const onKeyUp = (e: KeyboardEvent) => {
       const key = e.key.toLowerCase();
@@ -60,12 +74,12 @@ export function PianoKeys({ engine }: Props) {
       if (semi === undefined) return;
       down.delete(key);
       synth.release(semi);
-      setHeldKey((h) => (h === semi ? -1 : h));
+      markReleased(semi);
     };
     const onBlur = () => {
       down.forEach((key) => synth.release(KEY_MAP[key]));
       down.clear();
-      setHeldKey(-1);
+      setHeldKeys(new Set());
     };
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
@@ -80,12 +94,12 @@ export function PianoKeys({ engine }: Props) {
   const onDown = (semi: number) => (e: ReactPointerEvent) => {
     e.preventDefault();
     synth.press(semi);
-    setHeldKey(semi);
+    markHeld(semi);
   };
 
   const onUp = (semi: number) => () => {
     synth.release(semi);
-    setHeldKey((h) => (h === semi ? -1 : h));
+    markReleased(semi);
   };
 
   return (
@@ -94,7 +108,7 @@ export function PianoKeys({ engine }: Props) {
         {WHITE_KEYS.map((k) => (
           <button
             key={k.name}
-            className={heldKey === k.semi ? 'white-key held' : 'white-key'}
+            className={heldKeys.has(k.semi) ? 'white-key held' : 'white-key'}
             onPointerDown={onDown(k.semi)}
             onPointerUp={onUp(k.semi)}
             onPointerLeave={onUp(k.semi)}
@@ -109,7 +123,7 @@ export function PianoKeys({ engine }: Props) {
       {BLACK_KEYS.map((k) => (
         <button
           key={k.name}
-          className={heldKey === k.semi ? 'black-key held' : 'black-key'}
+          className={heldKeys.has(k.semi) ? 'black-key held' : 'black-key'}
           onPointerDown={onDown(k.semi)}
           onPointerUp={onUp(k.semi)}
           onPointerLeave={onUp(k.semi)}
