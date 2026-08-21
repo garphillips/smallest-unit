@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { tint, wowmeta } from '../theme';
-import { playKey } from '../audio/voices';
+import { KeySynth } from '../audio/keySynth';
 import type { Engine } from '../audio/engine';
 
 interface Props {
@@ -27,16 +27,24 @@ const BLACK_KEYS = [
 ];
 
 export function PianoKeys({ engine }: Props) {
+  const synthRef = useRef<KeySynth | null>(null);
+  if (!synthRef.current) synthRef.current = new KeySynth(engine);
+  const synth = synthRef.current;
+
   const [heldKey, setHeldKey] = useState(-1);
+
+  useEffect(() => () => synth.releaseAll(), [synth]);
 
   const onDown = (semi: number) => (e: ReactPointerEvent) => {
     e.preventDefault();
-    engine.resume();
-    playKey(engine.env(), semi, engine.ctx().currentTime + 0.01);
+    synth.press(semi);
     setHeldKey(semi);
   };
 
-  const clear = () => setHeldKey(-1);
+  const onUp = (semi: number) => () => {
+    synth.release(semi);
+    setHeldKey((h) => (h === semi ? -1 : h));
+  };
 
   return (
     <div style={{ position: 'relative', height: 220, touchAction: 'none' }}>
@@ -46,8 +54,8 @@ export function PianoKeys({ engine }: Props) {
             key={k.name}
             className={heldKey === k.semi ? 'white-key held' : 'white-key'}
             onPointerDown={onDown(k.semi)}
-            onPointerUp={clear}
-            onPointerLeave={clear}
+            onPointerUp={onUp(k.semi)}
+            onPointerLeave={onUp(k.semi)}
             aria-label={`key ${k.name}`}
           >
             <span style={{ font: wowmeta(11), letterSpacing: '0.08em', textTransform: 'uppercase', color: tint(0.42) }}>
@@ -61,8 +69,8 @@ export function PianoKeys({ engine }: Props) {
           key={k.name}
           className={heldKey === k.semi ? 'black-key held' : 'black-key'}
           onPointerDown={onDown(k.semi)}
-          onPointerUp={clear}
-          onPointerLeave={clear}
+          onPointerUp={onUp(k.semi)}
+          onPointerLeave={onUp(k.semi)}
           aria-label={`key ${k.name}`}
           style={{ left: `${((k.whiteIndex + 1) * 100) / 7}%`, transform: 'translateX(-50%)' }}
         />
