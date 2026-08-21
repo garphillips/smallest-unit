@@ -240,6 +240,16 @@ button {
   opacity: 1;
   text-decoration: none;
 }
+/* tablet landscape and up: pin it into the same fixed header band as the
+   logo/wordmark, at the far right, instead of sitting under the content */
+@media (min-width: 900px) and (orientation: landscape) {
+  .credit-link {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    z-index: 10;
+  }
+}
 
 /* fixed header — the blur and tint are invisible over the flat page
    background and only appear when content scrolls underneath */
