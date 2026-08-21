@@ -1,4 +1,4 @@
-import { OFFWHITE, wowmeta } from '../theme';
+import { OFFWHITE } from '../theme';
 
 export function Footer() {
   return (
@@ -10,7 +10,6 @@ export function Footer() {
       style={{
         alignSelf: 'flex-end',
         color: OFFWHITE,
-        font: wowmeta(11),
         letterSpacing: '0.08em',
         textTransform: 'uppercase',
       }}

@@ -232,6 +232,7 @@ button {
 
 /* credit link below the content */
 .credit-link {
+  font: 400 11px/1 'Wowmeta', monospace;
   text-decoration: none;
   opacity: 0.64;
   transition: opacity 120ms cubic-bezier(0.4, 0, 0.2, 1);
@@ -241,12 +242,15 @@ button {
   text-decoration: none;
 }
 /* tablet landscape and up: pin it into the same fixed header band as the
-   logo/wordmark, at the far right, instead of sitting under the content */
+   logo/wordmark, at the far right, instead of sitting under the content.
+   Font size matches the header text (13px), and the top offset centers
+   it in the same 24px-padding/28px-logo-height band as the header row. */
 @media (min-width: 900px) and (orientation: landscape) {
   .credit-link {
     position: fixed;
-    top: 24px;
+    top: calc(24px + (28px - 13px) / 2);
     right: 24px;
+    font-size: 13px;
     z-index: 10;
   }
 }
