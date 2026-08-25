@@ -10,12 +10,13 @@ interface Props {
   currentStep: number;
   onCycle: (id: LaneId, i: number) => void;
   onSetLane: (id: LaneId, values: number[]) => void;
+  onEditVoice: (id: LaneId) => void;
 }
 
 const DEG_NAMES = ['root', 'b3', '5th', 'oct'];
 const groupStart = (i: number) => i % 4 === 0 && i > 0;
 
-export function PitchLanes({ lanes, currentStep, onCycle, onSetLane }: Props) {
+export function PitchLanes({ lanes, currentStep, onCycle, onSetLane, onEditVoice }: Props) {
   const [shuffleIdx, setShuffleIdx] = useState<Record<LaneId, number>>({ bass: 0, synth: 0 });
 
   const shuffle = (def: LaneDef) => {
@@ -34,9 +35,14 @@ export function PitchLanes({ lanes, currentStep, onCycle, onSetLane }: Props) {
           <div key={def.id} style={{ display: 'flex', flexDirection: 'column', gap: 0, ...rowStyle }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <div className="lane-col">
-                <div style={{ font: wowmeta(12, 1.4), letterSpacing: '0.08em', textTransform: 'uppercase', color: alpha(hex, 0.64) }}>
+                <button
+                  className="lane-label-btn"
+                  onClick={() => onEditVoice(def.id)}
+                  title={`edit ${def.id} sound`}
+                  style={{ font: wowmeta(12, 1.4), letterSpacing: '0.08em', textTransform: 'uppercase', color: alpha(hex, 0.64) }}
+                >
                   {def.id}
-                </div>
+                </button>
               </div>
               {Array.from({ length: STEPS }, (_, i) => {
                 const deg = lanes[def.id][i];

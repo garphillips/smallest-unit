@@ -33,8 +33,8 @@ export async function renderStems(s: Snapshot): Promise<Blob | null> {
       if (!lane[i]) continue;
       const sw = i % 2 === 1 ? ((s.swing - 50) / 100) * 2 * dur : 0;
       const t = 0.05 + i * dur + sw;
-      if (stem.drum) playVoice(E, stem.id as keyof typeof s.pattern, t);
-      else playMel(E, stem.id as LaneId, lane[i] as number, t, s.bassWave);
+      if (stem.drum) playVoice(E, stem.id as keyof typeof s.pattern, t, s.voices);
+      else playMel(E, stem.id as LaneId, lane[i] as number, t, s.voices);
     }
     const buf = await off.startRendering();
     const wav = encodeWavBuffer([buf.getChannelData(0), buf.getChannelData(1)], RATE);

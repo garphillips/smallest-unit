@@ -1,19 +1,20 @@
 import type { Engine } from './engine';
+import type { ParamsOf } from './params';
+
+type KeysParams = ParamsOf<'keys'>;
 
 interface KeyNodes {
   g: GainNode;
   lp: BiquadFilterNode;
   oscs: OscillatorNode[];
+  /** Captured at press time, so re-tuning the release never cuts a held note. */
+  release: number;
 }
 
-const DETUNES = [-14, 0, 14]; // supersaw unison spread, cents
-const ATTACK = 0.02;
-const DECAY = 0.35;
-const PEAK = 0.14;
+const DECAY = 0.35; // bright -> warm settle time
+const PEAK = 0.14; // both scaled by the `level` param
 const SUSTAIN = 0.08;
-const RELEASE = 0.4;
-const BRIGHT_HZ = 5200;
-const WARM_HZ = 1300;
+const WARM_RATIO = 0.25; // the filter settles to this fraction of `bright`
 const PAN = -1; // piano sits hard-left
 
 /**
@@ -38,7 +39,7 @@ export class KeySynth {
     return this.panner;
   }
 
-  press(semi: number) {
+  press(semi: number, p: KeysParams) {
     this.release(semi, true);
     const ac = this.engine.ctx();
     this.engine.resume();
@@ -47,18 +48,18 @@ export class KeySynth {
 
     const lp = ac.createBiquadFilter();
     lp.type = 'lowpass';
-    lp.Q.value = 5;
-    lp.frequency.setValueAtTime(BRIGHT_HZ, t);
-    lp.frequency.exponentialRampToValueAtTime(WARM_HZ, t + DECAY);
+    lp.Q.value = p.res;
+    lp.frequency.setValueAtTime(p.bright, t);
+    lp.frequency.exponentialRampToValueAtTime(p.bright * WARM_RATIO, t + DECAY);
 
     const g = ac.createGain();
     g.gain.setValueAtTime(0.0001, t);
-    g.gain.linearRampToValueAtTime(PEAK, t + ATTACK);
-    g.gain.exponentialRampToValueAtTime(SUSTAIN, t + ATTACK + DECAY);
+    g.gain.linearRampToValueAtTime(Math.max(0.0001, PEAK * p.level), t + p.attack);
+    g.gain.exponentialRampToValueAtTime(Math.max(0.0001, SUSTAIN * p.level), t + p.attack + DECAY);
     lp.connect(g);
     g.connect(this.getPanner());
 
-    const oscs = DETUNES.map((det) => {
+    const oscs = [-p.spread, 0, p.spread].map((det) => {
       const o = ac.createOscillator();
       o.type = 'sawtooth';
       o.frequency.value = f0;
@@ -74,7 +75,7 @@ export class KeySynth {
     sub.start(t);
     oscs.push(sub);
 
-    this.voices.set(semi, { g, lp, oscs });
+    this.voices.set(semi, { g, lp, oscs, release: p.release });
   }
 
   /** Release the held note; `immediate` is used internally to cut a re-triggered voice fast. */
@@ -83,7 +84,7 @@ export class KeySynth {
     if (!v) return;
     const ac = this.engine.ctx();
     const t = ac.currentTime;
-    const dur = immediate ? 0.03 : RELEASE;
+    const dur = immediate ? 0.03 : v.release;
     v.g.gain.cancelScheduledValues(t);
     v.g.gain.setValueAtTime(v.g.gain.value, t);
     v.g.gain.exponentialRampToValueAtTime(0.0001, t + dur);

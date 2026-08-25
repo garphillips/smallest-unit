@@ -1,4 +1,7 @@
 import type { Engine } from './engine';
+import type { ParamsOf } from './params';
+
+type PadParams = ParamsOf<'pad'>;
 
 interface DroneNodes {
   g: GainNode;
@@ -8,9 +11,8 @@ interface DroneNodes {
   oscs: { o: OscillatorNode; semi: number }[];
 }
 
-const DRIVE = 3.2;
-const DISTORTION_AMOUNT = 55;
-const GRAIN_LEVEL = 0.16;
+const GRAIN_LEVEL = 0.16; // scaled by the `grain` param
+const PAD_PEAK = 0.17; // scaled by the `level` param
 const PAN = 1; // pad sits hard-right
 
 /** Classic soft-clip waveshaper curve; higher `amount` bites harder. */
@@ -35,6 +37,8 @@ function makeDistortionCurve(amount: number): Float32Array {
 export class PadDrone {
   private nodes: DroneNodes | null = null;
   private panner: StereoPannerNode | null = null;
+  /** Params of the currently sounding drone — update() reads glide from here. */
+  private p: PadParams | null = null;
 
   constructor(private engine: Engine) {}
 
@@ -48,24 +52,25 @@ export class PadDrone {
     return this.panner;
   }
 
-  start(x: number, y: number) {
+  start(x: number, y: number, p: PadParams) {
     const ac = this.engine.ctx();
     this.engine.resume();
     const t = ac.currentTime;
     this.stop(true);
+    this.p = p;
     const g = ac.createGain();
     g.gain.setValueAtTime(0.0001, t);
-    g.gain.linearRampToValueAtTime(0.17, t + 0.15);
+    g.gain.linearRampToValueAtTime(Math.max(0.0001, PAD_PEAK * p.level), t + 0.15);
 
     const lp = ac.createBiquadFilter();
     lp.type = 'lowpass';
-    lp.Q.value = 2;
+    lp.Q.value = p.res;
 
     const drive = ac.createGain();
-    drive.gain.value = DRIVE;
+    drive.gain.value = p.drive;
 
     const shaper = ac.createWaveShaper();
-    shaper.curve = makeDistortionCurve(DISTORTION_AMOUNT);
+    shaper.curve = makeDistortionCurve(p.grit);
     shaper.oversample = '4x';
 
     lp.connect(drive);
@@ -77,7 +82,7 @@ export class PadDrone {
     noiseFilter.type = 'bandpass';
     noiseFilter.Q.value = 0.7;
     const noiseGain = ac.createGain();
-    noiseGain.gain.value = GRAIN_LEVEL;
+    noiseGain.gain.value = GRAIN_LEVEL * p.grain;
     const noise = ac.createBufferSource();
     noise.buffer = this.engine.env().noiseBuf;
     noise.loop = true;
@@ -113,20 +118,21 @@ export class PadDrone {
     if (!this.nodes) return;
     const ac = this.engine.ctx();
     const t = ac.currentTime;
+    const glide = this.p?.glide ?? 0.04;
     const degs = [0, 3, 7, 12, 15, 19];
     const f0 = 110 * Math.pow(2, degs[Math.min(degs.length - 1, Math.floor((1 - y) * degs.length))] / 12);
     const cut = 200 * Math.pow(20, x); // X: timbre, 200..4000
     this.nodes.oscs.forEach(({ o, semi }) => {
       const f = f0 * Math.pow(2, semi / 12);
       if (snap) o.frequency.setValueAtTime(f, t);
-      else o.frequency.setTargetAtTime(f, t, 0.04);
+      else o.frequency.setTargetAtTime(f, t, glide);
     });
     if (snap) {
       this.nodes.lp.frequency.setValueAtTime(cut, t);
       this.nodes.noiseFilter.frequency.setValueAtTime(cut, t);
     } else {
-      this.nodes.lp.frequency.setTargetAtTime(cut, t, 0.04);
-      this.nodes.noiseFilter.frequency.setTargetAtTime(cut, t, 0.04);
+      this.nodes.lp.frequency.setTargetAtTime(cut, t, glide);
+      this.nodes.noiseFilter.frequency.setTargetAtTime(cut, t, glide);
     }
   }
 
@@ -145,5 +151,6 @@ export class PadDrone {
       noise.stop(t + 0.5);
     }
     this.nodes = null;
+    this.p = null;
   }
 }

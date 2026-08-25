@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
-import { ACCENTS } from '../config';
-import { alpha } from '../theme';
+import { ACCENTS, voiceLabel } from '../config';
+import { alpha, wowmeta } from '../theme';
 import { PadDrone } from '../audio/drone';
 import type { Engine } from '../audio/engine';
+import type { ParamsOf, VoiceId } from '../audio/params';
 
 interface Props {
   engine: Engine;
+  params: ParamsOf<'pad'>;
+  onEditVoice: (id: VoiceId) => void;
 }
 
 interface TrailPoint {
@@ -30,7 +33,7 @@ function xyPos(e: ReactPointerEvent<HTMLDivElement>) {
   };
 }
 
-export function XYPad({ engine }: Props) {
+export function XYPad({ engine, params, onEditVoice }: Props) {
   const droneRef = useRef<PadDrone | null>(null);
   if (!droneRef.current) droneRef.current = new PadDrone(engine);
   const drone = droneRef.current;
@@ -69,7 +72,7 @@ export function XYPad({ engine }: Props) {
     e.preventDefault();
     e.currentTarget.setPointerCapture(e.pointerId);
     const p = xyPos(e);
-    drone.start(p.x, p.y);
+    drone.start(p.x, p.y, params);
     startPrune();
     setXy(p);
     setHeld(true);
@@ -105,7 +108,22 @@ export function XYPad({ engine }: Props) {
   };
 
   return (
-    <div
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <button
+        className="lane-label-btn"
+        onClick={() => onEditVoice('pad')}
+        title="edit xy pad sound"
+        style={{
+          alignSelf: 'flex-start',
+          font: wowmeta(12, 1.4),
+          letterSpacing: '0.08em',
+          textTransform: 'uppercase',
+          color: pFn(0.64),
+        }}
+      >
+        {voiceLabel('pad')}
+      </button>
+      <div
       onPointerDown={onDown}
       onPointerMove={onMove}
       onPointerUp={onUp}
@@ -168,6 +186,7 @@ export function XYPad({ engine }: Props) {
           transition: 'background 120ms cubic-bezier(0.4,0,0.2,1)',
         }}
       />
+      </div>
     </div>
   );
 }

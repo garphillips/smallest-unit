@@ -6,11 +6,12 @@ interface Props {
   pattern: Pattern;
   currentStep: number;
   onToggle: (id: DrumId, i: number) => void;
+  onEditVoice: (id: DrumId) => void;
 }
 
 const groupStart = (i: number) => i % 4 === 0 && i > 0;
 
-export function StepGrid({ pattern, currentStep, onToggle }: Props) {
+export function StepGrid({ pattern, currentStep, onToggle, onEditVoice }: Props) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       {SHOW_STEP_NUMBERS && (
@@ -36,10 +37,15 @@ export function StepGrid({ pattern, currentStep, onToggle }: Props) {
       )}
       {TRACK_DEFS.map((td) => (
         <div key={td.id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <div className="lane-col" style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <div style={{ font: wowmeta(12, 1.4), letterSpacing: '0.08em', textTransform: 'uppercase', color: tint(0.64) }}>
+          <div className="lane-col">
+            <button
+              className="lane-label-btn"
+              onClick={() => onEditVoice(td.id)}
+              title={`edit ${td.name} sound`}
+              style={{ font: wowmeta(12, 1.4), letterSpacing: '0.08em', textTransform: 'uppercase', color: tint(0.64) }}
+            >
               {td.name}
-            </div>
+            </button>
           </div>
           {Array.from({ length: STEPS }, (_, i) => {
             const cls = [

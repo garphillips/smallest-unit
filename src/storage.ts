@@ -1,4 +1,5 @@
 import { BPM_MAX, BPM_MIN, DEFAULT_BPM } from './config';
+import { clampVoices, defaultVoices, type VoiceSettings } from './audio/params';
 import { MAX_STEPS, defaultPattern, melFill } from './patterns';
 import type { Lanes, Pattern } from './types';
 
@@ -9,6 +10,7 @@ export interface SavedState {
   lanes: Lanes;
   bpm: number;
   swing: number;
+  voices: VoiceSettings;
 }
 
 export function defaultState(): SavedState {
@@ -17,6 +19,7 @@ export function defaultState(): SavedState {
     lanes: { bass: melFill('bass', 'rise'), synth: melFill('synth', 'stabs') },
     bpm: DEFAULT_BPM,
     swing: 50,
+    voices: defaultVoices(),
   };
 }
 
@@ -40,6 +43,7 @@ export function loadState(): SavedState {
       lanes: Object.fromEntries(laneIds.map((id) => [id, s.lanes![id]])) as Lanes,
       bpm: typeof s.bpm === 'number' ? Math.min(BPM_MAX, Math.max(BPM_MIN, Math.round(s.bpm))) : fallback.bpm,
       swing: typeof s.swing === 'number' ? Math.min(62, Math.max(50, s.swing)) : fallback.swing,
+      voices: clampVoices(s.voices),
     };
   } catch {
     return fallback;

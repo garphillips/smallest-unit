@@ -1,11 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
+import { voiceLabel } from '../config';
 import { tint, wowmeta } from '../theme';
 import { KeySynth } from '../audio/keySynth';
 import type { Engine } from '../audio/engine';
+import type { ParamsOf, VoiceId } from '../audio/params';
 
 interface Props {
   engine: Engine;
+  params: ParamsOf<'keys'>;
+  onEditVoice: (id: VoiceId) => void;
 }
 
 // Bottom row types the naturals (c d e f g a b); the row above sits each
@@ -34,12 +38,17 @@ const KEY_MAP: Record<string, number> = Object.fromEntries(
   [...WHITE_KEYS, ...BLACK_KEYS].map((k) => [k.key, k.semi]),
 );
 
-export function PianoKeys({ engine }: Props) {
+export function PianoKeys({ engine, params, onEditVoice }: Props) {
   const synthRef = useRef<KeySynth | null>(null);
   if (!synthRef.current) synthRef.current = new KeySynth(engine);
   const synth = synthRef.current;
 
   const [heldKeys, setHeldKeys] = useState<Set<number>>(() => new Set());
+
+  // The window key listeners below are bound once, so they read the live params
+  // through a ref rather than capturing the first render's props.
+  const paramsRef = useRef(params);
+  paramsRef.current = params;
 
   const markHeld = (semi: number) =>
     setHeldKeys((prev) => {
@@ -65,7 +74,7 @@ export function PianoKeys({ engine }: Props) {
       const semi = KEY_MAP[key];
       if (semi === undefined || e.repeat || down.has(key) || isTyping()) return;
       down.add(key);
-      synth.press(semi);
+      synth.press(semi, paramsRef.current);
       markHeld(semi);
     };
     const onKeyUp = (e: KeyboardEvent) => {
@@ -93,7 +102,7 @@ export function PianoKeys({ engine }: Props) {
 
   const onDown = (semi: number) => (e: ReactPointerEvent) => {
     e.preventDefault();
-    synth.press(semi);
+    synth.press(semi, paramsRef.current);
     markHeld(semi);
   };
 
@@ -103,7 +112,22 @@ export function PianoKeys({ engine }: Props) {
   };
 
   return (
-    <div style={{ position: 'relative', height: 220, touchAction: 'none' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <button
+        className="lane-label-btn"
+        onClick={() => onEditVoice('keys')}
+        title="edit keys sound"
+        style={{
+          alignSelf: 'flex-start',
+          font: wowmeta(12, 1.4),
+          letterSpacing: '0.08em',
+          textTransform: 'uppercase',
+          color: tint(0.64),
+        }}
+      >
+        {voiceLabel('keys')}
+      </button>
+      <div style={{ position: 'relative', height: 220, touchAction: 'none' }}>
       <div style={{ display: 'flex', gap: 4, height: '100%' }}>
         {WHITE_KEYS.map((k) => (
           <button
@@ -131,6 +155,7 @@ export function PianoKeys({ engine }: Props) {
           style={{ left: `${((k.whiteIndex + 1) * 100) / 7}%`, transform: 'translateX(-50%)' }}
         />
       ))}
+      </div>
     </div>
   );
 }

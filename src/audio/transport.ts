@@ -66,11 +66,11 @@ export class Transport {
       const swingOff = step % 2 === 1 ? ((s.swing - 50) / 100) * 2 * dur : 0;
       const t = this.nextTime + swingOff;
       (Object.keys(s.pattern) as DrumId[]).forEach((id) => {
-        if (s.pattern[id][step]) playVoice(E, id, t);
+        if (s.pattern[id][step]) playVoice(E, id, t, s.voices);
       });
       (['bass', 'synth'] as LaneId[]).forEach((id) => {
         const deg = s.lanes[id][step];
-        if (deg) playMel(E, id, deg, t, s.bassWave);
+        if (deg) playMel(E, id, deg, t, s.voices);
       });
       const delay = Math.max(0, (t - ac.currentTime) * 1000);
       this.uiTimeouts.push(

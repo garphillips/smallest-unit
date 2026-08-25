@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { BASS_WAVE, STEPS } from './config';
+import { ACCENTS, STEPS, voiceLabel } from './config';
 import { BG, TEXT } from './theme';
 import type { DrumId, LaneId, Snapshot } from './types';
+import type { AnyParams, ParamsOf, VoiceId, VoiceSettings } from './audio/params';
 import { Engine } from './audio/engine';
 import { Transport } from './audio/transport';
 import { Recorder } from './audio/recorder';
 import { renderStems } from './audio/stems';
+import { PadDrone } from './audio/drone';
+import { KeySynth } from './audio/keySynth';
 import { playMel, playVoice } from './audio/voices';
 import { loadState, saveState } from './storage';
 import { download } from './download';
@@ -17,6 +20,17 @@ import { StepGrid } from './components/StepGrid';
 import { PitchLanes } from './components/PitchLanes';
 import { XYPad } from './components/XYPad';
 import { PianoKeys } from './components/PianoKeys';
+import { VoiceModal } from './components/VoiceModal';
+
+/** Voices with an accent of their own; everything else uses the base lilac. */
+const VOICE_ACCENTS: Partial<Record<VoiceId, string>> = {
+  bass: ACCENTS.bass,
+  synth: ACCENTS.synth,
+  pad: ACCENTS.pad,
+};
+
+/** How long a previewed pad/keys note is held before it releases. */
+const PREVIEW_HOLD_MS = 900;
 
 export default function App() {
   const engineRef = useRef<Engine | null>(null);
@@ -33,10 +47,12 @@ export default function App() {
   const [recording, setRecording] = useState(false);
   const [recSec, setRecSec] = useState(0);
   const [rendering, setRendering] = useState(false);
+  const [voices, setVoices] = useState(initial.voices);
+  const [editing, setEditing] = useState<VoiceId | null>(null);
 
   // The transport's setInterval reads live state through this ref.
   const snapshotRef = useRef<Snapshot>(null as unknown as Snapshot);
-  snapshotRef.current = { steps: STEPS, bpm, swing, pattern, lanes, bassWave: BASS_WAVE };
+  snapshotRef.current = { steps: STEPS, bpm, swing, pattern, lanes, voices };
 
   const transportRef = useRef<Transport | null>(null);
   if (!transportRef.current) {
@@ -46,9 +62,17 @@ export default function App() {
   if (!recorderRef.current) recorderRef.current = new Recorder();
   const recTimerRef = useRef<number | null>(null);
 
+  // Audition-only pad/keys instruments, kept separate from the ones the
+  // performance components own so a preview can never cut a held note.
+  const previewRef = useRef<{ pad: PadDrone; keys: KeySynth } | null>(null);
+  if (!previewRef.current) {
+    previewRef.current = { pad: new PadDrone(engine), keys: new KeySynth(engine) };
+  }
+  const previewTimers = useRef<{ fire: number | null; stop: number | null }>({ fire: null, stop: null });
+
   useEffect(() => {
-    saveState({ pattern, lanes, bpm, swing });
-  }, [pattern, lanes, bpm, swing]);
+    saveState({ pattern, lanes, bpm, swing, voices });
+  }, [pattern, lanes, bpm, swing, voices]);
 
   const togglePlay = useCallback(() => {
     const transport = transportRef.current!;
@@ -63,6 +87,7 @@ export default function App() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (editing) return;
       if (e.code === 'Space' && !e.repeat && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || '')) {
         e.preventDefault();
         togglePlay();
@@ -70,7 +95,7 @@ export default function App() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [togglePlay]);
+  }, [togglePlay, editing]);
 
   useEffect(
     () => () => {
@@ -78,6 +103,11 @@ export default function App() {
       if (recTimerRef.current !== null) clearInterval(recTimerRef.current);
       recTimerRef.current = null;
       recorderRef.current?.stop(engine);
+      const { fire, stop } = previewTimers.current;
+      if (fire !== null) clearTimeout(fire);
+      if (stop !== null) clearTimeout(stop);
+      previewRef.current?.pad.stop(true);
+      previewRef.current?.keys.releaseAll();
     },
     [engine],
   );
@@ -85,7 +115,7 @@ export default function App() {
   const toggleCell = (id: DrumId, i: number) => {
     if (!pattern[id][i] && !transportRef.current!.playing) {
       engine.resume();
-      playVoice(engine.env(), id, engine.ctx().currentTime + 0.01);
+      playVoice(engine.env(), id, engine.ctx().currentTime + 0.01, voices);
     }
     setPattern((p) => ({ ...p, [id]: p[id].map((v, j) => (j === i ? !v : v)) }));
   };
@@ -94,12 +124,57 @@ export default function App() {
     const next = (lanes[id][i] + 1) % 5;
     if (next && !transportRef.current!.playing) {
       engine.resume();
-      playMel(engine.env(), id, next, engine.ctx().currentTime + 0.01, BASS_WAVE);
+      playMel(engine.env(), id, next, engine.ctx().currentTime + 0.01, voices);
     }
     setLanes((l) => ({ ...l, [id]: l[id].map((v, j) => (j === i ? (v + 1) % 5 : v)) }));
   };
 
   const setLane = (id: LaneId, values: number[]) => setLanes((l) => ({ ...l, [id]: values }));
+
+  const clearPreviewTimers = () => {
+    const timers = previewTimers.current;
+    if (timers.fire !== null) clearTimeout(timers.fire);
+    if (timers.stop !== null) clearTimeout(timers.stop);
+    timers.fire = null;
+    timers.stop = null;
+  };
+
+  const stopPreview = () => {
+    clearPreviewTimers();
+    previewRef.current!.pad.stop(false);
+    previewRef.current!.keys.releaseAll();
+  };
+
+  /** The sustained voices preview on a short debounce and release themselves,
+      so dragging a slider doesn't stack overlapping drones. */
+  const auditionSustained = (id: 'pad' | 'keys', params: AnyParams) => {
+    clearPreviewTimers();
+    const preview = previewRef.current!;
+    previewTimers.current.fire = window.setTimeout(() => {
+      if (id === 'pad') preview.pad.start(0.5, 0.32, params as ParamsOf<'pad'>);
+      else preview.keys.press(0, params as ParamsOf<'keys'>);
+      previewTimers.current.stop = window.setTimeout(() => {
+        if (id === 'pad') preview.pad.stop(false);
+        else preview.keys.release(0);
+      }, PREVIEW_HOLD_MS);
+    }, 140);
+  };
+
+  /** Preview an in-progress sound edit. The sequenced voices stay silent while
+      the transport runs, since the pattern already sounds the change on its
+      next hit; the pad and keys aren't sequenced, so they always preview. */
+  const auditionVoice = (id: VoiceId, params: AnyParams) => {
+    if (id === 'pad' || id === 'keys') {
+      auditionSustained(id, params);
+      return;
+    }
+    if (transportRef.current!.playing) return;
+    engine.resume();
+    const V = { ...voices, [id]: params } as VoiceSettings;
+    const t = engine.ctx().currentTime + 0.01;
+    if (id === 'bass' || id === 'synth') playMel(engine.env(), id, 1, t, V);
+    else playVoice(engine.env(), id, t, V);
+  };
 
   const toggleRecord = async () => {
     const recorder = recorderRef.current!;
@@ -160,14 +235,34 @@ export default function App() {
           />
           <BpmControl bpm={bpm} onChange={setBpm} />
         </div>
-        <StepGrid pattern={pattern} currentStep={currentStep} onToggle={toggleCell} />
-        <PitchLanes lanes={lanes} currentStep={currentStep} onCycle={cycleMel} onSetLane={setLane} />
+        <StepGrid pattern={pattern} currentStep={currentStep} onToggle={toggleCell} onEditVoice={setEditing} />
+        <PitchLanes
+          lanes={lanes}
+          currentStep={currentStep}
+          onCycle={cycleMel}
+          onSetLane={setLane}
+          onEditVoice={setEditing}
+        />
         <div className="performance-row">
-          <XYPad engine={engine} />
-          <PianoKeys engine={engine} />
+          <XYPad engine={engine} params={voices.pad} onEditVoice={setEditing} />
+          <PianoKeys engine={engine} params={voices.keys} onEditVoice={setEditing} />
         </div>
         <Footer />
       </div>
+      {editing && (
+        <VoiceModal
+          id={editing}
+          name={voiceLabel(editing)}
+          accent={VOICE_ACCENTS[editing] ?? TEXT}
+          params={voices[editing]}
+          onChange={(next) => setVoices((v) => ({ ...v, [editing]: next }) as VoiceSettings)}
+          onAudition={(next) => auditionVoice(editing, next)}
+          onClose={() => {
+            stopPreview();
+            setEditing(null);
+          }}
+        />
+      )}
     </div>
   );
 }
