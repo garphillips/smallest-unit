@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ACCENTS, STEPS, voiceLabel } from './config';
-import { BG, TEXT } from './theme';
+import { TEXT } from './theme';
 import type { DrumId, LaneId, Snapshot } from './types';
 import type { AnyParams, ParamsOf, VoiceId, VoiceSettings } from './audio/params';
 import { Engine } from './audio/engine';
@@ -16,6 +16,7 @@ import { Footer } from './components/Footer';
 import { Header } from './components/Header';
 import { TransportControls } from './components/TransportControls';
 import { BpmControl } from './components/BpmControl';
+import { Spectrum } from './components/Spectrum';
 import { StepGrid } from './components/StepGrid';
 import { PitchLanes } from './components/PitchLanes';
 import { XYPad } from './components/XYPad';
@@ -211,7 +212,6 @@ export default function App() {
     <div
       style={{
         minHeight: '100vh',
-        background: BG,
         color: TEXT,
         font: "400 16px/1.55 'North East', Georgia, serif",
         display: 'flex',
@@ -221,6 +221,7 @@ export default function App() {
         padding: '128px 48px 72px',
       }}
     >
+      <Spectrum engine={engine} />
       <Header />
       <div style={{ width: '100%', maxWidth: 1180, display: 'flex', flexDirection: 'column', gap: 48 }}>
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 48, flexWrap: 'wrap' }}>

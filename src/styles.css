@@ -26,6 +26,10 @@
 html,
 body {
   margin: 0;
+}
+/* Only html carries the page colour. A background on body would paint on top of
+   negative-z-index layers (the ambient glow), hiding them. */
+html {
   background: #171717;
 }
 * {

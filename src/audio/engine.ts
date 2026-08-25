@@ -21,6 +21,7 @@ export class Engine {
   private ac: AudioContext | null = null;
   private masterGain: GainNode | null = null;
   private noiseBuf: AudioBuffer | null = null;
+  private analyserNode: AnalyserNode | null = null;
 
   ctx(): AudioContext {
     if (!this.ac) {
@@ -41,6 +42,25 @@ export class Engine {
   env(): AudioEnv {
     const ac = this.ctx();
     return { ac, master: this.masterGain!, noiseBuf: this.noiseBuf! };
+  }
+
+  /**
+   * Analyser tapped off the master bus, or null while the context is still
+   * un-created — callers poll this so a visualiser never forces an
+   * AudioContext into being before the first user gesture. The tap's output
+   * is intentionally left unconnected: master already feeds the destination,
+   * so it gets pulled and the analyser sees the same signal.
+   */
+  analyser(): AnalyserNode | null {
+    if (!this.ac) return null;
+    if (!this.analyserNode) {
+      this.analyserNode = this.ac.createAnalyser();
+      this.analyserNode.fftSize = 2048;
+      this.analyserNode.smoothingTimeConstant = 0.86;
+      this.analyserNode.minDecibels = -85;
+      this.masterGain!.connect(this.analyserNode);
+    }
+    return this.analyserNode;
   }
 
   resume() {
