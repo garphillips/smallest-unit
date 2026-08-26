@@ -56,8 +56,10 @@ export class Engine {
     if (!this.analyserNode) {
       this.analyserNode = this.ac.createAnalyser();
       this.analyserNode.fftSize = 2048;
-      this.analyserNode.smoothingTimeConstant = 0.86;
-      this.analyserNode.minDecibels = -85;
+      this.analyserNode.smoothingTimeConstant = 0.65;
+      // A tighter window than the -100 default: quiet content maps to zero, so
+      // the glow can actually reach its floor instead of hovering above it.
+      this.analyserNode.minDecibels = -70;
       this.masterGain!.connect(this.analyserNode);
     }
     return this.analyserNode;

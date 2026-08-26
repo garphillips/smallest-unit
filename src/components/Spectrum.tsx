@@ -36,18 +36,26 @@ const BLUR_PX = 28;
  * per-frame steps so the motion looks the same on a 60Hz and a 120Hz display.
  * Falling much slower than rising is what stops the glow twitching.
  */
-const TAU_RISE = 110;
-const TAU_FALL = 340;
-/** Leaves headroom so the glow rarely reaches the top of the band. */
-const HEADROOM = 0.88;
+const TAU_RISE = 45;
+const TAU_FALL = 110;
+/** Leaves a sliver of headroom at the top of the band. */
+const HEADROOM = 1;
 /**
  * Music carries far more energy low down, so an honest spectrum always leans
  * left. Bands are log-spaced, so a boost rising linearly with band index is a
  * constant dB-per-octave tilt — it spreads the glow without lying about shape.
  */
 const TILT = 1.7;
-/** Compresses the range, lifting quiet bands so they still register. */
-const CURVE = 0.7;
+/**
+ * Range stretch. Readings below IN_FLOOR read as silence and above IN_CEIL as
+ * full height, and everything between is spread across the whole band — without
+ * this the glow never drops below a third and the movement is squashed into the
+ * top of its travel. CURVE then shapes what is left: above 1 expands, deepening
+ * the dips between hits.
+ */
+const IN_FLOOR = 0.18;
+const IN_CEIL = 0.9;
+const CURVE = 1.2;
 /**
  * Lobe alpha before the blur spreads it. The floor is what governs how
  * prominent the glow feels — a floor near zero keeps it invisible at rest so it
@@ -71,8 +79,8 @@ function bandEdges(analyser: AnalyserNode, sampleRate: number, bars: number): [n
 /**
  * Level for one band, 0..1. Down at 30Hz a band is narrower than a single
  * 21.5Hz bin, so several lobes would read the same bin and move in lockstep —
- * those interpolate between neighbouring bins instead. Wider bands average,
- * which sits calmer than taking the max.
+ * those interpolate between neighbouring bins instead. Wider bands take the max, since
+ * percussive transients are what make the movement legible.
  */
 function readBand(bins: Uint8Array, lo: number, hi: number): number {
   const first = Math.ceil(lo);
@@ -83,9 +91,9 @@ function readBand(bins: Uint8Array, lo: number, hi: number): number {
     const t = mid - i;
     return (bins[i] * (1 - t) + bins[i + 1] * t) / 255;
   }
-  let sum = 0;
-  for (let k = first; k <= last; k++) sum += bins[k];
-  return sum / (last - first + 1) / 255;
+  let peak = 0;
+  for (let k = first; k <= last; k++) if (bins[k] > peak) peak = bins[k];
+  return peak / 255;
 }
 
 /** Ambient glow of the master bus, pinned behind the page. */
@@ -154,19 +162,21 @@ export function Spectrum({ engine }: Props) {
         analyser.getByteFrequencyData(bins);
         for (let i = 0; i < bars; i++) {
           const tilted = readBand(bins, edges[i][0], edges[i][1]) * (1 + TILT * (i / (bars - 1)));
-          raw[i] = Math.pow(Math.min(1, tilted), CURVE);
+          const stretched = (Math.min(1, tilted) - IN_FLOOR) / (IN_CEIL - IN_FLOOR);
+          raw[i] = Math.pow(Math.max(0, Math.min(1, stretched)), CURVE);
         }
       } else {
         raw.fill(0);
       }
 
-      // A light 3-tap blur across neighbours, so the glow reads as one contour
-      // rather than separate columns.
+      // A touch of neighbour smoothing. Kept light: the 28px CSS blur already
+      // softens spatially, so flattening the data as well would just hide which
+      // part of the spectrum is moving.
       for (let i = 0; i < bars; i++) {
         const a = raw[i === 0 ? 0 : i - 1];
         const b = raw[i];
         const c = raw[i === bars - 1 ? bars - 1 : i + 1];
-        targets[i] = a * 0.25 + b * 0.5 + c * 0.25;
+        targets[i] = a * 0.15 + b * 0.7 + c * 0.15;
       }
 
       let live = false;
